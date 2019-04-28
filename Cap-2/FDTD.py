@@ -2,7 +2,7 @@ import math
 import Materiais
 
 class FDTD():
-    def __init__(self, material, showGraphic, KE, NSTEPS):
+    def __init__(self, showGraphic, KE, NSTEPS, *material):
         self.material = material
         self.showGraphic = showGraphic
         self.KE = KE
@@ -80,9 +80,12 @@ class FDTD():
                 self.dx[self.dic['kc']] = self.dx[self.dic['kc']] + self.dic['pulse']
                 
                 for k in range(1,self.KE-1):
-                    self.ex[k] = self.material.ga[k]*(self.dx[k] - self.ix[k])
-                    self.ix[k] = self.ix[k] + self.material.gb[k]*self.ex[k]
-                
+                    self.ex[k] = (self.dx[k] - self.ix[k])
+                    for m in self.material:
+                        if(m.ga[k] != 1):
+                            self.ex[k] = m.ga[k]*(self.dx[k] - self.ix[k])
+                            self.ix[k] = self.ix[k] + m.gb[k]*self.ex[k]
+                            break
                 self.ex[0] = self.dic['ex_low_m2']
                 self.dic['ex_low_m2'] = self.dic['ex_low_m1']
                 self.dic['ex_low_m1'] = self.ex[1]
@@ -93,48 +96,48 @@ class FDTD():
                 for j in range(0,self.KE-1,1):
                     self.hy[j] = self.hy[j] + .5*(self.ex[j] - self.ex[j+1])
             
-            self.showGraphic.saveFig(loop, self.ex, self.hy, self.material.ga)
+            self.showGraphic.saveFig(loop, self.ex, self.hy, self.material)
             #self.showGraphic.saveFig(self.ex, self.hy, self.material.cb)
             loop += 1
-    def loopFDTD2(self):
-        while(self.NSTEPS < 10):
-            for i in range(1,self.NSTEPS+1,1):
-                self.dic['T'] += 1
-                for j in range(1,self.KE,1):
-                    self.dx[j] = self.dx[j] + 0.5*(self.hy[j-1] - self.hy[j])
-                self.dic['pulse'] = math.exp(-.5*(math.pow((self.dic['t0'] - (self.dic['T'] - self.dic['t0']))/self.dic['spread'],2.0)))
-                self.dx[25] = self.dx[25] + self.dic['pulse']
-                
-                for k in range(1,self.KE-1):
-                    self.ex[k] = self.material.ga[k]*(self.dx[k] - self.ix[k])
-                    self.ix[k] = self.ix[k] + self.material.gb[k]*self.ex[k]
-                
-                for k in range(self.KE):
-                    self.mag[k] = self.mag[k] + math.pow(self.ex[k],2.)
-                    for m in range(0,5,1):
-                        self.real_pt[m][k] = self.real_pt[m][k] + math.cos(self.arg[m]*self.dic['T'])*self.ex[k]
-                        self.imag_pt[m][k] = self.imag_pt[m][k] - math.sin(self.arg[m]*self.dic['T'])*self.ex[k]
-                if(self.dic['T'] < 100):
-                    for m in range(0, 3, 1):
-                        self.real_in[m] = self.real_in[m] + math.cos(self.arg[m] * self.dic['T']) * self.ex[10]
-                        self.imag_in[m] = self.imag_in[m] - math.sin(self.arg[m] * self.dic['T']) * self.ex[10]
-                self.ex[0] = self.dic['ex_low_m2']
-                self.dic['ex_low_m2'] = self.dic['ex_low_m1']
-                self.dic['ex_low_m1'] = self.ex[1]
-        
-                self.ex[self.KE - 1] = self.dic['ex_high_m2']
-                self.dic['ex_high_m2'] = self.dic['ex_high_m1']
-                self.dic['ex_high_m1'] = self.ex[self.KE - 2]
-                for j in range(0,self.KE-1,1):
-                    self.hy[j] = self.hy[j] + .5*(self.ex[j] - self.ex[j+1])
+    def loopFDTDFourier(self):
+        for i in range(1,self.NSTEPS+1,1):
+            self.dic['T'] += 1
+            for j in range(1,self.KE,1):
+                self.dx[j] = self.dx[j] + 0.5*(self.hy[j-1] - self.hy[j])
+            self.dic['pulse'] = math.exp(-.5*(math.pow((self.dic['t0'] - (self.dic['T'] - self.dic['t0']))/self.dic['spread'],2.0)))
+            self.dx[25] = self.dx[25] + self.dic['pulse']
             
-            self.showGraphic.saveFig(self.NSTEPS, self.ex, self.hy, self.material.cb)
-            #self.showGraphic.saveFig(self.ex, self.hy, self.material.cb)
-            self.NSTEPS += 1
+            for k in range(1,self.KE-1):
+                self.ex[k] = (self.dx[k] - self.ix[k])
+                for m in self.material:
+                    if(m.ga[k] != 1):
+                        self.ex[k] = m.ga[k]*(self.dx[k] - self.ix[k])
+                        self.ix[k] = self.ix[k] + m.gb[k]*self.ex[k]
+                        break
+            for k in range(self.KE):
+                self.mag[k] = self.mag[k] + math.pow(self.ex[k],2.)
+                for m in range(0,5,1):
+                    self.real_pt[m][k] = self.real_pt[m][k] + math.cos(self.arg[m]*self.dic['T'])*self.ex[k]
+                    self.imag_pt[m][k] = self.imag_pt[m][k] - math.sin(self.arg[m]*self.dic['T'])*self.ex[k]
+            if(self.dic['T'] < 100):
+                for m in range(0, 3, 1):
+                    self.real_in[m] = self.real_in[m] + math.cos(self.arg[m] * self.dic['T']) * self.ex[10]
+                    self.imag_in[m] = self.imag_in[m] - math.sin(self.arg[m] * self.dic['T']) * self.ex[10]
+            self.ex[0] = self.dic['ex_low_m2']
+            self.dic['ex_low_m2'] = self.dic['ex_low_m1']
+            self.dic['ex_low_m1'] = self.ex[1]
+    
+            self.ex[self.KE - 1] = self.dic['ex_high_m2']
+            self.dic['ex_high_m2'] = self.dic['ex_high_m1']
+            self.dic['ex_high_m1'] = self.ex[self.KE - 2]
+            for j in range(0,self.KE-1,1):
+                self.hy[j] = self.hy[j] + .5*(self.ex[j] - self.ex[j+1])
+            
+            self.showGraphic.saveFig(self.NSTEPS, self.ex, self.hy, [i.gb for i in self.material])
         
 class FDTD2D(FDTD):
-    def __init__(self, material, showGraphic, KE, NSTEPS, IE, JE):
-        super().__init__(material, showGraphic, KE, NSTEPS)
+    def __init__(self, material, showGraphic, NSTEPS, kc, IE, JE):
+        super().__init__(material, showGraphic, JE, NSTEPS)
         self.IE = IE
         self.JE = JE
         self.ez = []
@@ -162,6 +165,7 @@ class FDTD2D(FDTD):
         self.dic['ib'] = 0
         self.dic['ja'] = 0
         self.dic['jb'] = 0
+        self.dic['kc'] = kc
         
                 
     def init(self, npml):
@@ -193,14 +197,14 @@ class FDTD2D(FDTD):
         self.hx_inc = [ 0.0 for i in range(self.JE)]
         
         self.dic['t0'] = 20.
+        self.dic['T'] = 0
         self.dic['spread'] = 8.
-        self.dic['kc'] = 25
         self.dic['ic'] = self.IE//2
         self.dic['jc'] = self.JE//2
-        self.dic['ia'] = 7
+        self.dic['ia'] = 6
         self.dic['ib'] = self.IE - self.dic['ia'] - 1
-        self.dic['ja'] = 7
-        self.dic['jb'] = self.JE - self.dic['ib'] - 1
+        self.dic['ja'] = 6
+        self.dic['jb'] = self.JE - self.dic['ja'] - 1
         for i in range(npml+1):
             xnum = npml - i
             xd = npml
@@ -258,16 +262,16 @@ class FDTD2D(FDTD):
                         self.dz[i][j] = self.gi3[i] * self.gj3[j] * self.dz[i][j] + self.gi2[i] * self.gj2[j] * .5 * (self.hy[i][j] - self.hy[i - 1][j] - self.hx[i][j] + self.hx[i][j - 1])
         
                 self.dic['pulse'] = math.exp(-.5 * pow((self.dic['T'] - self.dic['t0']) / self.dic['spread'], 2.))
-                self.ez_inc[3] = self.dic['pulse']
+                self.ez_inc[self.dic['kc']] = self.dic['pulse']
         
                 for i in range(self.dic['ia'],self.dic['ib']+1):
                     self.dz[i][self.dic['ja']] = self.dz[i][self.dic['ja']] + 0.5 * self.hx_inc[self.dic['ja'] - 1]
                     self.dz[i][self.dic['jb']] = self.dz[i][self.dic['jb']] - 0.5 * self.hx_inc[self.dic['jb']]
         
-                #for j in range(1,self.IE):
-                 #   for i in range(1,self.IE):
-                  #      self.ez[i][j] = self.material.ga[i][j] * (self.dz[i][j] - self.iz[i][j])
-                   #     self.iz[i][j] = self.iz[i][j] + self.material.gb[i][j] * self.ez[i][j]
+               # for j in range(1,self.IE):
+                #    for i in range(1,self.IE):
+                 #       self.ez[i][j] = self.material.ga[i][j] * (self.dz[i][j] - self.iz[i][j])
+                  #      self.iz[i][j] = self.iz[i][j] + self.material.gb[i][j] * self.ez[i][j]
                 for j in range(1,self.IE):
                     for i in range(1,self.JE):
                         self.ez[i][j] = float(self.material.ga[i][j] * self.dz[i][j])
@@ -295,22 +299,75 @@ class FDTD2D(FDTD):
                     self.hy[self.dic['ib']][j] = self.hy[self.dic['ib']][j] + (.5 * self.ez_inc[j])
                 
                 
-                self.showGraphic.saveFigImageDemo(self.dic['T'],self.ez,[])
+                self.showGraphic.saveFigColor(self.dic['T'],self.ez,[])
             loop = False
-                
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+    def loopFDTD2(self, materiais):
+        print(len(materiais))
+        for n in range(self.NSTEPS+1):
+            self.dic['T'] += 1
+            for j in range(1,self.JE):
+                self.ez_inc[j] = self.ez_inc[j] + .5 * (self.hx_inc[j - 1] - self.hx_inc[j])
+    
+            self.ez_inc[0] = self.dic['ez_inc_low_m2']
+            self.dic['ez_inc_low_m2'] = self.dic['ez_inc_low_m1']
+            self.dic['ez_inc_low_m1'] = self.ez_inc[1]
+            self.ez_inc[self.JE - 1] = self.dic['ez_inc_high_m2']
+            self.dic['ez_inc_high_m2'] = self.dic['ez_inc_high_m1']
+            self.dic['ez_inc_high_m1'] = self.ez_inc[self.JE - 2]
+    
+            for j in range(1,self.IE):
+                for i in range(1,self.IE):
+                    self.dz[i][j] = self.gi3[i] * self.gj3[j] * self.dz[i][j] + self.gi2[i] * self.gj2[j] * .5 * (self.hy[i][j] - self.hy[i - 1][j] - self.hx[i][j] + self.hx[i][j - 1])
+    
+            self.dic['pulse'] = math.exp(-.5 * pow((self.dic['T'] - self.dic['t0']) / self.dic['spread'], 2.))
+            self.ez_inc[self.dic['kc']] = self.dic['pulse']
+    
+            for i in range(self.dic['ia'],self.dic['ib']+1):
+                self.dz[i][self.dic['ja']] = self.dz[i][self.dic['ja']] + 0.5 * self.hx_inc[self.dic['ja'] - 1]
+                self.dz[i][self.dic['jb']] = self.dz[i][self.dic['jb']] - 0.5 * self.hx_inc[self.dic['jb']]
+            
+            for i in range(1,self.IE):
+                for j in range(1,self.JE):
+                    for k in materiais:
+                        if(k.ga[i][j] != 1):
+                            self.ez[i][j] = float(k.ga[i][j] * self.dz[i][j])
+                        
+            for j in range(self.JE - 1):
+                self.hx_inc[j] = self.hx_inc[j] + .5 * (self.ez_inc[j] - self.ez_inc[j + 1])
+    
+            for j in range(self.JE-1):
+                for i in range(self.IE):
+                    curl_e = self.ez[i][j] - self.ez[i][j + 1]
+                    self.ihx[i][j] = self.ihx[i][j] + self.fi1[i] * curl_e
+                    self.hx[i][j] = self.fj3[j] * self.hx[i][j] + self.fj2[j] * .5 * (curl_e + self.ihx[i][j])
+    
+            for i in range(self.dic['ia'],self.dic['ib']+1):
+                self.hx[i][self.dic['ja'] - 1] = self.hx[i][self.dic['ja'] - 1] + .5 * self.ez_inc[self.dic['ja']]
+                self.hx[i][self.dic['jb']] = self.hx[i][self.dic['jb']] - .5 * self.ez_inc[self.dic['jb']]
+    
+            for j in range(self.JE-1):
+                for i in range(self.IE-1):
+                    curl_e = self.ez[i + 1][j] - self.ez[i][j]
+                    self.ihy[i][j] = self.ihy[i][j] + self.fj1[j] * curl_e
+                    self.hy[i][j] = self.fi3[i] * self.hy[i][j] + self.fi2[i] * .5 * (curl_e + self.ihy[i][j])
+            for j in range(self.dic['ja'],self.dic['jb']+1):
+                self.hy[self.dic['ia'] - 1][j] = self.hy[self.dic['ia'] - 1][j] - .5 * self.ez_inc[j]
+                self.hy[self.dic['ib']][j] = self.hy[self.dic['ib']][j] + .5 * self.ez_inc[j]
+            
+            self.showGraphic.saveFigColor(self.dic['T'],self.ez,[])
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
     
     
     

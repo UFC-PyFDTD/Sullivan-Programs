@@ -43,13 +43,13 @@ class Cilinder():
     def init(self):
         self.ga = [ [1.0 for j in range(self.size)] for i in range(self.size)]
         self.gb = [ [1.0 for j in range(self.size)] for i in range(self.size)]
-        for j in range(7,52):
-            for i in range(7,52):
-                xdist = 25 - i
-                ydist = 25 - j
+        
+        for j in range(self.size):
+            for i in range(self.size):
+                xdist = self.start - i
+                ydist = self.end - j
                 dist = math.sqrt(pow(xdist, 2.) + pow(ydist, 2.))
                 if (dist <= self.radius):
-                
                     self.ga[i][j] = 1. / (self.epsilon + ((self.sigma * self.dt) / self.epsz))
                     self.gb[i][j] = (self.sigma * self.dt) / self.epsz
                     
