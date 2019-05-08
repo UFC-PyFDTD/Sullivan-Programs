@@ -8,13 +8,18 @@ class showPlt():
         self.max_Y = max_Y
         self.min_Y = min_Y
     
-    def saveFig(self, NSTEPS, ex, hy, *args):
+    def saveFig(self, NSTEPS, ex, hy, args):
         plt.plot([self.max_Y])
         plt.plot([self.min_Y])
+        '''for i in range(len(ex)):
+            if(ex[i] > 1.):
+                ex[i] = 1
+            if(hy[i] > 1.):
+                hy[i] = 1
+           ''' 
         plt.plot(ex)
         plt.plot(hy)
-        for i in args:
-            plt.plot(i)
+        plt.plot(args.ga)
         plt.title("Ex - Green | Hy - Red | Step = "+str(NSTEPS))
         fig = plt.gcf()    
         fig.savefig(str("img"+str(NSTEPS)+".png"))
@@ -40,8 +45,8 @@ class showPlt():
         X, Y = np.meshgrid(X, Y)
         
         ax.plot_surface(X,Y,Z)
-        #ax.view_init(10, 300)
-        ax.view_init(70, 290)
+        ax.view_init(10, 300)
+        #ax.view_init(70, 290)
         
         #plt.show()
         plt.close()
@@ -50,7 +55,7 @@ class showPlt():
         fig.savefig(str("img" + str(NSTEPS) + ".png"))
         
         
-    def saveFigColor(self, NSTEPS, value, *args):
+    def saveFigColor(self, NSTEPS, value):
         
         fig = plt.gcf()
         ax = Axes3D(fig)
@@ -60,8 +65,8 @@ class showPlt():
         X, Y = np.meshgrid(X, Y)
         
         ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.viridis)
-        #ax.view_init(10, 300)
         ax.view_init(90, 0)
+        #ax.view_init(45,45)
         ax.set_axis_off()
         #plt.show()
         plt.close()

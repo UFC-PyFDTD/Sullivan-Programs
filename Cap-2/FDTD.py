@@ -1,8 +1,11 @@
 import math
 import Materiais
+import tkinter 
+from tkinter import ttk
+
 
 class FDTD():
-    def __init__(self, showGraphic, KE, NSTEPS, *material):
+    def __init__(self, showGraphic, KE, NSTEPS, material):
         self.material = material
         self.showGraphic = showGraphic
         self.KE = KE
@@ -34,6 +37,8 @@ class FDTD():
         self.dic['ex_high_m1'] = .0
         self.dic['ex_high_m2'] = .0
         self.dic['kc'] = 0
+        self.progress = None
+
     
     def init(self):
         self.ex = [0. for i in range(self.KE)]
@@ -64,42 +69,60 @@ class FDTD():
         self.dic['ex_low_m2'] = .0
         self.dic['ex_high_m1'] = .0
         self.dic['ex_high_m2'] = .0
-        self.dic['kc'] = 25
+        self.dic['kc'] = 5
         for m in range(0, 3, 1):
             self.real_in[m] = self.real_in[m] + math.cos(self.arg[m] * self.dic['T']) * self.ex[10]
             self.imag_in[m] = self.imag_in[m] - math.sin(self.arg[m] * self.dic['T']) * self.ex[10]
     
     def loopFDTD(self):
-        loop = 0
-        while(loop < self.NSTEPS ):
-            for i in range(1,self.NSTEPS+1,1):
-                self.dic['T'] += 1
-                for j in range(1,self.KE,1):
-                    self.dx[j] = self.dx[j] + 0.5*(self.hy[j-1] - self.hy[j])
-                self.dic['pulse'] = math.exp(-.5*(math.pow((self.dic['t0'] - (self.dic['T'] - self.dic['t0']))/self.dic['spread'],2.0)))
-                self.dx[self.dic['kc']] = self.dx[self.dic['kc']] + self.dic['pulse']
-                
-                for k in range(1,self.KE-1):
-                    self.ex[k] = (self.dx[k] - self.ix[k])
-                    for m in self.material:
-                        if(m.ga[k] != 1):
-                            self.ex[k] = m.ga[k]*(self.dx[k] - self.ix[k])
-                            self.ix[k] = self.ix[k] + m.gb[k]*self.ex[k]
-                            break
-                self.ex[0] = self.dic['ex_low_m2']
-                self.dic['ex_low_m2'] = self.dic['ex_low_m1']
-                self.dic['ex_low_m1'] = self.ex[1]
+        tk = tkinter.Tk()
+        tk.title("Saving Images")
         
-                self.ex[self.KE - 1] = self.dic['ex_high_m2']
-                self.dic['ex_high_m2'] = self.dic['ex_high_m1']
-                self.dic['ex_high_m1'] = self.ex[self.KE - 2]
-                for j in range(0,self.KE-1,1):
-                    self.hy[j] = self.hy[j] + .5*(self.ex[j] - self.ex[j+1])
+        label = tkinter.Label(tk)
+        label.pack()
+        p = ttk.Progressbar(tk,orient=tkinter.HORIZONTAL,length=200,mode="determinate",takefocus=True,maximum=self.NSTEPS)
+        p.pack()
+        
+        for i in range(1,self.NSTEPS+1,1):
+            self.dic['T'] += 1
+            for j in range(1,self.KE,1):
+                self.dx[j] = self.dx[j] + 0.5*(self.hy[j-1] - self.hy[j])
+            self.dic['pulse'] = math.exp(-.5*(math.pow((self.dic['t0'] - (self.dic['T'] - self.dic['t0']))/self.dic['spread'],2.0)))
+           # self.dic['pulse'] = math.sin(2*math.pi*500*self.dic['T']);
             
-            self.showGraphic.saveFig(loop, self.ex, self.hy, self.material)
+            self.dx[self.dic['kc']] = self.dx[self.dic['kc']] + self.dic['pulse']
+            for k in range(1,self.KE-1):
+                self.ex[k] = self.material.ga[k]*(self.dx[k] - self.ix[k])
+               # self.ix[k] = self.ix[k] + self.material.gb[k]*self.ex[k]
+                        
+            self.ex[0] = self.dic['ex_low_m2']
+            self.dic['ex_low_m2'] = self.dic['ex_low_m1']
+            self.dic['ex_low_m1'] = self.ex[1]
+    
+            self.ex[self.KE - 1] = self.dic['ex_high_m2']
+            self.dic['ex_high_m2'] = self.dic['ex_high_m1']
+            self.dic['ex_high_m1'] = self.ex[self.KE - 2]
+            for j in range(0,self.KE-1,1):
+                self.hy[j] = self.hy[j] + .5*(self.ex[j] - self.ex[j+1])
+            
+            self.showGraphic.saveFig(i, self.ex, self.hy, self.material)
+          
+            p.step()
+            
+            label["text"] = "image-"+str(i)
+            
+            tk.update()
             #self.showGraphic.saveFig(self.ex, self.hy, self.material.cb)
-            loop += 1
+        tk.destroy()
     def loopFDTDFourier(self):
+        tk = tkinter.Tk()
+        tk.title("Saving Images")
+        
+        label = tkinter.Label(tk)
+        label.pack()
+        p = ttk.Progressbar(tk,orient=tkinter.HORIZONTAL,length=200,mode="determinate",takefocus=True,maximum=self.NSTEPS)
+        p.pack()
+        
         for i in range(1,self.NSTEPS+1,1):
             self.dic['T'] += 1
             for j in range(1,self.KE,1):
@@ -133,11 +156,17 @@ class FDTD():
             for j in range(0,self.KE-1,1):
                 self.hy[j] = self.hy[j] + .5*(self.ex[j] - self.ex[j+1])
             
-            self.showGraphic.saveFig(self.NSTEPS, self.ex, self.hy, [i.gb for i in self.material])
-        
+            self.showGraphic.saveFig(i, self.ex, self.hy, self.material)
+          
+            p.step()
+            
+            label["text"] = "image-"+str(i)
+            
+            tk.update()
+        tk.destroy()
 class FDTD2D(FDTD):
     def __init__(self, material, showGraphic, NSTEPS, kc, IE, JE):
-        super().__init__(material, showGraphic, JE, NSTEPS)
+        super().__init__(showGraphic, JE, NSTEPS, material)
         self.IE = IE
         self.JE = JE
         self.ez = []
@@ -244,6 +273,14 @@ class FDTD2D(FDTD):
     
     def loopFDTD(self):
         loop = True
+        tk = tkinter.Tk()
+        tk.title("Saving Images")
+        
+        label = tkinter.Label(tk)
+        label.pack()
+        p = ttk.Progressbar(tk,orient=tkinter.HORIZONTAL,length=200,mode="determinate",takefocus=True,maximum=self.NSTEPS)
+        p.pack()
+        
         while(loop):
             for n in range(1,self.NSTEPS+1):
                 self.dic['T'] += 1
@@ -268,13 +305,13 @@ class FDTD2D(FDTD):
                     self.dz[i][self.dic['ja']] = self.dz[i][self.dic['ja']] + 0.5 * self.hx_inc[self.dic['ja'] - 1]
                     self.dz[i][self.dic['jb']] = self.dz[i][self.dic['jb']] - 0.5 * self.hx_inc[self.dic['jb']]
         
-               # for j in range(1,self.IE):
-                #    for i in range(1,self.IE):
-                 #       self.ez[i][j] = self.material.ga[i][j] * (self.dz[i][j] - self.iz[i][j])
-                  #      self.iz[i][j] = self.iz[i][j] + self.material.gb[i][j] * self.ez[i][j]
                 for j in range(1,self.IE):
-                    for i in range(1,self.JE):
-                        self.ez[i][j] = float(self.material.ga[i][j] * self.dz[i][j])
+                    for i in range(1,self.IE):
+                        self.ez[i][j] = self.material.ga[i][j] * (self.dz[i][j] - self.iz[i][j])
+                        self.iz[i][j] = self.iz[i][j] + (self.material.gb[i][j] * self.ez[i][j])
+                #for j in range(1,self.IE):
+                 #   for i in range(1,self.JE):
+                  #      self.ez[i][j] = float(self.material.ga[i][j] * self.dz[i][j])
 
                 for j in range(self.JE-1):
                     self.hx_inc[j] = self.hx_inc[j] + .5 * (self.ez_inc[j] - self.ez_inc[j + 1])
@@ -299,10 +336,22 @@ class FDTD2D(FDTD):
                     self.hy[self.dic['ib']][j] = self.hy[self.dic['ib']][j] + (.5 * self.ez_inc[j])
                 
                 
-                self.showGraphic.saveFigColor(self.dic['T'],self.ez,[])
+                self.showGraphic.saveFigColor(self.dic['T'],self.ez)
+                p.step()
+            
+                label["text"] = "image-"+str(self.dic['T'])
+            
+                tk.update()
             loop = False
+            tk.destroy()
     def loopFDTD2(self, materiais):
-        print(len(materiais))
+        tk = tkinter.Tk()
+        tk.title("Saving Images")
+        label = tkinter.Label(tk)
+        label.pack()
+        p = ttk.Progressbar(tk,orient=tkinter.HORIZONTAL,length=200,mode="determinate",takefocus=True,maximum=self.NSTEPS)
+        p.pack()
+        
         for n in range(self.NSTEPS+1):
             self.dic['T'] += 1
             for j in range(1,self.JE):
@@ -354,9 +403,11 @@ class FDTD2D(FDTD):
                 self.hy[self.dic['ia'] - 1][j] = self.hy[self.dic['ia'] - 1][j] - .5 * self.ez_inc[j]
                 self.hy[self.dic['ib']][j] = self.hy[self.dic['ib']][j] + .5 * self.ez_inc[j]
             
-            self.showGraphic.saveFigColor(self.dic['T'],self.ez,[])
-            
-            
+            self.showGraphic.saveFigColor(self.dic['T'],self.ez)
+            p.step()
+            label["text"] = "image-"+str(self.dic['T'])
+            tk.update()
+        tk.destroy()
             
             
             
